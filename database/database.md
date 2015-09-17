@@ -52,4 +52,85 @@ commit
 	4. PROPAGATION_REQUIRES_NEW: 总是开启一个新的事务。如果一个事务已经存在，则将这个存在的事务挂起。
 	5. PROPAGATION_NOT_SUPPORTED: 总是非事务地执行，并挂起任何存在的事务。
 	6. PROPAGATION_NEVER: 总是非事务地执行，如果存在一个活动事务，则抛出异常
-	7. PROPAGATION_NESTED:如果一个活动的事务存在，则运行在一个嵌套的事务中. 如果没有活动事务, 则按TransactionDefinition.PROPAGATION_REQUIRED 属性执行
+	7. PROPAGATION_NESTED:如果一个活动的事务存在，则运行在一个嵌套的事务中. 如果没有活动事务, 则按TransactionDefinition.PROPAGATION_REQUIRED 属性执行.
+
+####Spring事物的传播特性举例说明
+#####1.PROPAGATION_REQUIRED如果存在一个事务，则支持当前实务，如果没有事务则开启一个事物
+
+~~~
+
+//事务属性 PROPAGATION_REQUIRED
+methodA{
+……
+methodB();
+……
+}
+
+//事务属性 PROPAGATION_REQUIRED
+methodB{
+   ……
+}
+
+~~~
+当在一个线程中单独调用methodB()时，这个时候会开始一个Transaction。但是methodA调用methodB时，因为methodA已经开启了一个事务，这个时候methodB会加入到methodA的事务中。
+
+相当于
+
+```
+Transaction.begin()
+try{
+	methodB();
+	commit();
+}catch(Exception e){
+	rollback();
+}finnal{
+	release();
+}
+
+Transaction.begin()
+try{
+	methodA();
+	commit();
+}catch(Exception e){
+	rollback();
+}finnal{
+	release();
+}
+
+```
+
+#####2.PROPAGATION_SUPPORTS支持当前事务，如果没有没事那就非事务执行
+```
+//事务属性 PROPAGATION_REQUIRED 
+methodA(){
+  methodB();
+}
+
+//事务属性 PROPAGATION_SUPPORTS 
+methodB(){
+  ……
+}
+```
+单纯的调用methodB时，methodB方法是非事务的执行的。 
+当调用methdA时,methodB则加入了methodA的事务中,事务地执行。 
+#####3.PROPAGATION_MANDATORY如果已经存在一个事务，支持当前事务。如果没有一个活动的事务，则抛出异常。
+
+```
+
+//事务属性 PROPAGATION_REQUIRED 
+methodA(){
+  methodB();
+}
+
+//事务属性 PROPAGATION_MANDATORY 
+methodB(){
+  ……
+}
+
+```
+
+当单独调用methodB时，因为当前没有一个活动的事务，则会抛出异常 
+throw new IllegalTransactionStateException("Transaction propagation 'mandatory' but no existing transaction found"); 
+
+当调用methodA时，methodB则加入到methodA的事务中，事务地执行。 
+
