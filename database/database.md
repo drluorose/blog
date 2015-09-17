@@ -133,4 +133,190 @@ methodB(){
 throw new IllegalTransactionStateException("Transaction propagation 'mandatory' but no existing transaction found"); 
 
 当调用methodA时，methodB则加入到methodA的事务中，事务地执行。 
+####4.PROPAGATION_REQUIRES_NEW总是开启一个新的事务。如果一个事务已经存在，则将这个存在的事务挂起。
+
+```
+
+//事务属性 PROPAGATION_REQUIRED 
+methodA(){
+  doSomeThingA();
+methodB();
+doSomeThingB();
+}
+
+//事务属性 PROPAGATION_REQUIRES_NEW 
+methodB(){
+  ……
+}
+
+```
+
+当单独调用methodB时，相当于把methodb声明为REQUIRED。开启一个新的事务，事务地执行。
+
+```
+
+main(){
+ TransactionManager tm = null;
+try{
+  //获得一个JTA事务管理器
+   tm = getTransactionManager();
+   tm.begin();//开启一个新的事务
+   Transaction ts1 = tm.getTransaction();
+   doSomeThing();
+   tm.suspend();//挂起当前事务
+   try{
+     tm.begin();//重新开启第二个事务
+     Transaction ts2 = tm.getTransaction();
+     methodB();
+     ts2.commit();//提交第二个事务
+     
+   }
+  Catch(RunTimeException ex){
+     ts2.rollback();//回滚第二个事务
+  }
+  finally{
+    //释放资源
+  }
+   //methodB执行完后，复恢第一个事务
+   tm.resume(ts1);
+doSomeThingB();
+   ts1.commit();//提交第一个事务
+}
+catch(RunTimeException ex){
+  ts1.rollback();//回滚第一个事务
+}
+finally{
+  //释放资源
+}
+}
+
+```
+
+#####5.PROPAGATION_NOT_SUPPORTED总是非事务地执行，并挂起任何存在的事务。
+
+```
+
+//事务属性 PROPAGATION_REQUIRED 
+methodA(){
+  doSomeThingA();
+methodB();
+doSomeThingB();
+}
+
+//事务属性 PROPAGATION_NOT_SUPPORTED 
+methodB(){
+  ……
+}
+
+```
+当单独调用methodB时，不启用任何事务机制，非事务地执行。 
+当调用methodA时，相当于下面的效果 
+
+```
+
+main(){
+ TransactionManager tm = null;
+try{
+  //获得一个JTA事务管理器
+   tm = getTransactionManager();
+   tm.begin();//开启一个新的事务
+   Transaction ts1 = tm.getTransaction();
+   doSomeThing();
+   tm.suspend();//挂起当前事务
+     methodB();
+   //methodB执行完后，复恢第一个事务
+   tm.resume(ts1);
+doSomeThingB();
+   ts1.commit();//提交第一个事务
+}
+catch(RunTimeException ex){
+  ts1.rollback();//回滚第一个事务
+}
+finally{
+  //释放资源
+}
+}
+
+```
+
+#####6. PROPAGATION_NEVER: 总是非事务地执行，如果存在一个活动事务，则抛出异常
+
+```
+
+//事务属性 PROPAGATION_REQUIRED 
+methodA(){
+  doSomeThingA();
+methodB();
+doSomeThingB();
+}
+
+//事务属性 PROPAGATION_NEVER 
+methodB(){
+  ……
+}
+
+```
+单独调用methodB，则非事务的执行。 
+调用methodA则会抛出异常 
+throw new IllegalTransactionStateException( 
+"Transaction propagation 'never' but existing transaction found"); 
+
+
+#####6.PROPAGATION_NESTED如果一个活动的事务存在,则运行在一个嵌套的事务中. 如果没有活动事务, 则按TransactionDefinition.PROPAGATION_REQUIRED 属性执行 
+
+这是一个嵌套事务,使用JDBC 3.0驱动时,仅仅支持DataSourceTransactionManager作为事务管理器。需要JDBC 驱动的java.sql.Savepoint类。有一些JTA的事务管理器实现可能也提供了同样的功能。 
+
+使用PROPAGATION_NESTED，还需要把PlatformTransactionManager的nestedTransactionAllowed属性设为true; 
+而nestedTransactionAllowed属性值默认为false; 
+
+```
+//事务属性 PROPAGATION_REQUIRED   
+methodA(){  
+  doSomeThingA();  
+methodB();  
+doSomeThingB();  
+}  
+  
+//事务属性 PROPAGATION_NESTED  
+methodB(){  
+  ……  
+}  
+```
+
+如果单独调用methodB方法，则按REQUIRED属性执行。 
+
+如果调用methodA方法，相当于下面的效果 
+
+```
+main(){  
+Connection con = null;  
+Savepoint savepoint = null;  
+try{  
+  con = getConnection();  
+  con.setAutoCommit(false);  
+  doSomeThingA();  
+  savepoint = con2.setSavepoint();  
+  try  
+      methodB();  
+  }catch(RuntimeException ex){  
+     con.rollback(savepoint);  
+  }  
+  finally{  
+    //释放资源  
+  }  
+  
+  doSomeThingB();  
+  con.commit();  
+}  
+catch(RuntimeException ex){  
+  con.rollback();  
+}  
+finally{  
+  //释放资源  
+}  
+}  
+```
+当methodB方法调用之前，调用setSavepoint方法，保存当前的状态到savepoint。如果methodB方法调用失败，则恢复到之前保存的状态。但是需要注意的是，这时的事务并没有进行提交，如果后续的代码(doSomeThingB()方法)调用失败，则回滚包括methodB方法的所有操作。 
+
+嵌套事务一个非常重要的概念就是内层事务依赖于外层事务。外层事务失败时，会回滚内层事务所做的动作。而内层事务操作失败并不会引起外层事务的回滚。 
 
