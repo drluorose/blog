@@ -28,3 +28,4 @@ ByteStreams ,ByteSource,ByteSink;
 CharStream,CharSource,CharSink;
 ```
 ##Buffer
+怎么写这个buffer呢，我自己也没有弄明白了呢！
