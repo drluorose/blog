@@ -1,6 +1,7 @@
 #JAVA IO 知识总结
 ##首先看一下JAVA都有哪些类
 ![JAVA IO类](http://www.dxiaoran.com/image/java-io.png)
+
 1.字节流转化为字符流
 
 ```
