@@ -164,6 +164,9 @@ ${repeat("What", 3)} //whatwhatwhat
 ```
 
 
-
+##新的语法
+````
+替换（方括号）语法注意：这个特性从FreeMarker 2.3.4版本后才可用。FreeMarker支持一个替换的语法。就是在FreeMarker的指令和注释中用[和]来代替<<#compress><#assign users = [{"name":"Joe", "hidden":false},{"name":"James Bond", "hidden":true},{"name":"Julia", "hidden":false}]>List of users:<#list users as user><#if !user.hidden>- ${user.name}</#if></#list>That's all.</#compress>List of users:- Joe- JuliaThat's all.List of users: - Joe - Julia That's all.和>，例如下面这个例子：
+````
 
 
